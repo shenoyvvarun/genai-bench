@@ -37,6 +37,12 @@ class OpenAIUser(BaseUser):
         "text-to-image": "images_generations",
     }
 
+    # Maps backend name to its reasoning content field in SSE delta.
+    BACKEND_REASONING_FIELD = {
+        "vllm": "reasoning",
+        "sglang": "reasoning_content",
+    }
+
     host: Optional[str] = None
     auth_provider: Optional[ModelAuthProvider] = None
     headers = None
@@ -400,8 +406,12 @@ class OpenAIUser(BaseUser):
 
             try:
                 delta = data["choices"][0]["delta"]
-                content = delta.get("content") or delta.get("reasoning_content")
-                reasoning_content_chunk = delta.get("reasoning_content")
+                reasoning_field = self.BACKEND_REASONING_FIELD.get(self.api_backend)
+                content = delta.get("content")
+                reasoning_content_chunk = (
+                    delta.get(reasoning_field) if reasoning_field else None
+                )
+                content = content or reasoning_content_chunk
                 usage = delta.get("usage")
 
                 if usage:
